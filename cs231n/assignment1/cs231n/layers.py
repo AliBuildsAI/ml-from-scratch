@@ -28,7 +28,8 @@ def affine_forward(x, w, b):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x_reshaped = x.reshape(x.shape[0], -1)
+    out = x_reshaped @ w + b
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -61,7 +62,10 @@ def affine_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x_reshaped = x.reshape(x.shape[0], -1)
+    dw = x_reshaped.T @ dout
+    db = dout.sum(0)
+    dx = (dout @ w.T).reshape(x.shape)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -86,9 +90,7 @@ def relu_forward(x):
     # TODO: Implement the ReLU forward pass.                                  #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
-
+    out = x * (x > 0)
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -114,8 +116,8 @@ def relu_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
-
+    dx = dout * (x > 0)
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -773,8 +775,18 @@ def svm_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
-
+    num_train = x.shape[0]
+    correct_class_inds = np.arange(num_train), y
+    correct_class_scores = x[correct_class_inds]
+    margins = x - correct_class_scores[:, np.newaxis] + 1
+    
+    margins[margins < 0] = 0
+    margins[correct_class_inds] = 0
+    loss = np.sum(margins)
+    loss /= num_train
+    dx = (margins>0).astype(int)  #shape N, C
+    dx[correct_class_inds] -= dx.sum(axis=1)
+    dx = dx / num_train
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -803,7 +815,16 @@ def softmax_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    num_train = x.shape[0]
+    inds = np.arange(num_train), y
+    logits = x - np.max(x, 1, keepdims=True)
+    logits_exp = np.exp(logits)
+    softmax = logits_exp / np.sum(logits_exp, 1, keepdims=True)
+    log_softmax = np.log(softmax)
+    loss = -np.mean(log_softmax[inds])
+    dx = softmax
+    dx[inds] -= 1
+    dx /= num_train
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
