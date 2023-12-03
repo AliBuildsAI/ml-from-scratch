@@ -33,9 +33,25 @@ def softmax_loss_naive(W, X, y, reg):
     # regularization!                                                           #
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    num_train, num_classes = X.shape[0], W.shape[1]
+    logits = X @ W  # (N, C)
+    logits = logits - np.max(logits, 1, keepdims=True)
+    logits_exp = np.exp(logits)
+    softmax = logits_exp / np.sum(logits_exp, 1, keepdims=True)
+    log_softmax = np.log(softmax)
 
-    pass
-
+    for i in range(num_train):
+        
+        loss += -log_softmax[i, y[i]]
+        
+        dlogit = softmax[i]
+        dlogit[y[i]] -= 1
+        dW += np.outer(X[i], dlogit)
+        
+    loss /= num_train
+    loss += reg * np.sum(np.square(W))
+    dW += 2*reg*W
+    dW /= num_train
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     return loss, dW
@@ -58,8 +74,22 @@ def softmax_loss_vectorized(W, X, y, reg):
     # regularization!                                                           #
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
+    num_train, num_classes = X.shape[0], W.shape[1]
+    inds = np.arange(num_train), y
+    num_train, num_classes = X.shape[0], W.shape[1]
+    logits = X @ W  # (N, C)
+    logits = logits - np.max(logits, 1, keepdims=True)
+    logits_exp = np.exp(logits)
+    softmax = logits_exp / np.sum(logits_exp, 1, keepdims=True)
+    log_softmax = np.log(softmax)
+    scores = X @ W  # shape N, C
+    loss = -np.mean(log_softmax[inds])
+    dlogits = softmax
+    dlogits[inds] -= 1
+    dW = X.T @ dlogits
+    dW /= num_train
+    loss += reg * np.sum(np.square(W))
+    dW += 2 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
