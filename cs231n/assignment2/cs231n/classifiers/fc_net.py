@@ -174,6 +174,9 @@ class FullyConnectedNet(object):
                 cur_layer_cache.append(after_norm_cache)
                 after_relu_out, after_relu_cache = relu_forward(after_norm_out)
                 cur_layer_cache.append(after_relu_cache)
+                if self.use_dropout:
+                    after_relu_out, after_dropout_cache = dropout_forward(after_relu_out, self.dropout_param)
+                    cur_layer_cache.append(after_dropout_cache)
             
             cache.append(cur_layer_cache)
             input = after_relu_out
@@ -209,6 +212,8 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers, 0, -1):
             loss += 0.5 * self.reg * np.sum(np.square(self.params[f'W{i}']))
             if i < self.num_layers:
+                if self.use_dropout:
+                    dout_layer = dropout_backward(dout_layer, cache[i-1][3])
                 dout_layer = relu_backward(dout_layer, cache[i-1][2])
                 if self.normalization == 'batchnorm':
                     dout_layer, grads[f'gamma{i}'], grads[f'beta{i}'] = batchnorm_backward_alt(dout_layer, cache[i-1][1])
