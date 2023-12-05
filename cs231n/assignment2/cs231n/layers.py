@@ -195,8 +195,26 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # might prove to be helpful.                                          #
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        cache = {}
+        batch_mean = x.mean(0)
+        batch_diff = x - batch_mean
+        batch_diff2 = batch_diff ** 2
+        batch_var = batch_diff2.sum(0) / N
+        batch_std_inv = (batch_var + eps) ** -0.5
+        x_hat = batch_diff * batch_std_inv
+        out = gamma * x_hat + beta
+        cache['x_hat'] = x_hat
+        cache['gamma'] = gamma
+        cache['batch_diff'] = batch_diff
+        cache['batch_std_inv'] = batch_std_inv
+        cache['batch_var'] = batch_var
+        cache['batch_mean'] = batch_mean
+        cache['batch_diff2'] = batch_diff2
+        cache['x'] = x
+        cache['eps'] = eps
+        cache['N'] = N
+        running_mean = running_mean * momentum + (1 - momentum) * batch_mean
+        running_var = running_var * momentum + (1 - momentum) * batch_var
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -211,7 +229,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        x_hat = (x - running_mean) / (np.sqrt(running_var) + eps)
+        out = gamma * x_hat + beta
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -253,8 +272,21 @@ def batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
-
+    dbeta = dout.sum(0)
+    dgamma = (dout * cache['x_hat']).sum(0)
+    dx_hat = dout * cache['gamma']
+    dbatch_std_inv = (dx_hat * cache['batch_diff']).sum(0)
+    dbatch_diff = dx_hat * cache['batch_std_inv']
+    dbatch_var = -0.5 * dbatch_std_inv * (cache['batch_var']+cache['eps']) **(-1.5)
+    dbatch_diff2 = np.ones_like(cache['batch_diff2']) * dbatch_var / cache['N']
+    dbatch_diff += 2 * cache['batch_diff'] * dbatch_diff2
+    dx = dbatch_diff
+    dbatch_mean = - dbatch_diff.sum(0)
+    dx += dbatch_mean / cache['N']
+    
+    
+    #dx += dbatch_var * 2 * cache['x'] * cache['batch_offset_by_mean'] / cache['x'].shape[0]
+    #dx += dbatch_mean * cache['x'] / cache['x'].shape[0]
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -288,7 +320,9 @@ def batchnorm_backward_alt(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dgamma = (dout * cache['x_hat']).sum(0)
+    dbeta = dout.sum(0)
+    dx = cache['gamma'] / cache['N'] * cache['batch_std_inv'] * (cache['N'] * dout - dout.sum(0) - cache['x_hat'] * (dout * cache['x_hat']).sum(0))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -333,8 +367,25 @@ def layernorm_forward(x, gamma, beta, ln_param):
     # the batch norm code and leave it almost unchanged?                      #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
+    D = x.shape[1]
+    cache = {}
+    layer_mean = x.mean(1, keepdims=True)
+    layer_diff = x - layer_mean
+    layer_diff2 = layer_diff ** 2
+    layer_var = layer_diff2.sum(1, keepdims=True) / D
+    layer_std_inv = (layer_var + eps) ** -0.5
+    x_hat = layer_diff * layer_std_inv
+    out = gamma * x_hat + beta
+    cache['x_hat'] = x_hat
+    cache['gamma'] = gamma
+    cache['layer_diff'] = layer_diff
+    cache['layer_std_inv'] = layer_std_inv
+    cache['layer_var'] = layer_var
+    cache['layer_mean'] = layer_mean
+    cache['layer_diff2'] = layer_diff2
+    cache['x'] = x
+    cache['eps'] = eps
+    cache['D'] = D
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -369,7 +420,17 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dbeta = dout.sum(0)
+    dgamma = (dout * cache['x_hat']).sum(0)
+    dx_hat = dout * cache['gamma']
+    dlayer_std_inv = (dx_hat * cache['layer_diff']).sum(1, keepdims=True)
+    dlayer_diff = dx_hat * cache['layer_std_inv']
+    dlayer_var = -0.5 * dlayer_std_inv * (cache['layer_var']+cache['eps']) **(-1.5)
+    dlayer_diff2 = np.ones_like(cache['layer_diff2']) * dlayer_var / cache['D']
+    dlayer_diff += 2 * cache['layer_diff'] * dlayer_diff2
+    dx = dlayer_diff
+    dlayer_mean = - dlayer_diff.sum(1, keepdims=True)
+    dx += dlayer_mean / cache['D']
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
