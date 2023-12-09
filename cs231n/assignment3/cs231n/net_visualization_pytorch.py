@@ -34,7 +34,10 @@ def compute_saliency_maps(X, y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    pred = model.forward(X)
+    scores = pred.gather(1, y.view(-1, 1)).squeeze().sum()
+    scores.backward()
+    saliency = X.grad.abs().max(dim=1)[0]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -75,8 +78,14 @@ def make_fooling_image(X, target_y, model):
     # You can print your progress over iterations to check your algorithm.       #
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
+    while True:
+        scores = model(X_fooling)
+        score = scores[0, target_y]
+        if score == scores.max():
+            break
+        score.backward()
+        X_fooling.data += learning_rate * X_fooling.grad / X_fooling.grad.norm()
+        X_fooling.grad.zero_()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -94,7 +103,13 @@ def class_visualization_update_step(img, model, target_y, l2_reg, learning_rate)
     ########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    scores = model(img)
+    score = scores[0, target_y]
+    score_regularized = score - l2_reg * img.square().sum()
+    score_regularized.backward()
+    img.data += learning_rate * img.grad / img.grad.norm()
+    img.grad.zero_()
+    
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ########################################################################
