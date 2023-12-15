@@ -154,6 +154,9 @@ class CaptioningRNN:
         if self.cell_type == 'rnn':
             forward = rnn_forward
             backward = rnn_backward
+        elif self.cell_type == 'lstm':
+            forward = lstm_forward
+            backward = lstm_backward
         else:
             raise NotImplementedError
         hidden_output, cache_rnn = forward(input_word_emb, input_from_image, Wx, Wh, b)
@@ -233,11 +236,13 @@ class CaptioningRNN:
         
         h, _ = affine_forward(features, W_proj, b_proj)
         x = np.ones(N, dtype=np.int32) * self._start
-
+        c = np.zeros_like(h)
         for t in range(max_length):
             x, _ = word_embedding_forward(x, W_embed)
             if self.cell_type == 'rnn':
                 h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+            elif self.cell_type == 'lstm':
+                h, c, _ = lstm_step_forward(x, h, c, Wx, Wh, b)
             else:
                 raise NotImplementedError
             out, _ = affine_forward(h, W_vocab, b_vocab)
