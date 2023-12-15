@@ -147,9 +147,23 @@ class CaptioningRNN:
         # in your implementation, if needed.                                       #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
-
+        T = captions_in.shape[1]
+        input_from_image, cache_image = affine_forward(features, W_proj, b_proj)  # going to be h0 for our RNN
+        input_word_emb, cache_emb = word_embedding_forward(captions_in, W_embed)  # going to be x for our RNN
+        hidden_output = []
+        if self.cell_type == 'rnn':
+            forward = rnn_forward
+            backward = rnn_backward
+        else:
+            raise NotImplementedError
+        hidden_output, cache_rnn = forward(input_word_emb, input_from_image, Wx, Wh, b)
+        scores, cache_temporal = temporal_affine_forward(hidden_output, W_vocab, b_vocab)  # (batch size, T, vocab size)
+        loss, dL = temporal_softmax_loss(scores, captions_out, mask)
+        dout, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dL, cache_temporal)
+        dx, dh0, grads['Wx'], grads['Wh'], grads['b'] = backward(dout, cache_rnn)
+        grads['W_embed'] = word_embedding_backward(dx, cache_emb)
+        _, grads['W_proj'], grads['b_proj'] = affine_backward(dh0, cache_image)
+        
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -215,9 +229,21 @@ class CaptioningRNN:
         # you are using an LSTM, initialize the first cell state to zeros.        #
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        
+        
+        h, _ = affine_forward(features, W_proj, b_proj)
+        x = np.ones(N, dtype=np.int32) * self._start
 
-        pass
-
+        for t in range(max_length):
+            x, _ = word_embedding_forward(x, W_embed)
+            if self.cell_type == 'rnn':
+                h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+            else:
+                raise NotImplementedError
+            out, _ = affine_forward(h, W_vocab, b_vocab)
+            x = np.argmax(out, axis=1)
+            captions[:, t] = x
+        
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
